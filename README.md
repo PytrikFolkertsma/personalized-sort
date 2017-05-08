@@ -1,1 +1,1 @@
-# personalized-sort
+Code for the second assignment of Advanced Data Mining Techniques. 
