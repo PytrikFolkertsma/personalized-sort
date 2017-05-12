@@ -1,18 +1,22 @@
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
 
-def fit_model(X, y):
-	logistic = LogisticRegression()
-	# print(len(X)), len(y)
-	logistic.fit(X,y)
 
 def main():
 	train = pd.read_table('../../Data Mining VU data/train_small.txt') 
-	train_X = train['price_usd']
-	train_y = train['click_bool']
-	fit_model(train_X, train_y)
-	val = pd.read_table('../../Data Mining VU data/val_small.txt') 
-	# print train.head()
+	X = train[['price_usd']]
+	y = train['click_bool'].tolist()
+	train_X, test_X, train_y, test_y = train_test_split(X, y, test_size=0.5, random_state=23)
+	logistic = LogisticRegression()
+	logistic.fit(X,y)
+	predictions = logistic.predict(test_X)
+	probabilities = logistic.predict_proba(test_X)
+	output = open('../../Data Mining VU data/predictions.txt', 'w')
+	output.write('probability\tprediction\tgroundtruth\n')
+	# [i for i in range(len(predictions))]
+	[output.write(str(probabilities[i][1]) + '\t' + str(predictions[i]) + '\t' + str(test_y[i]) + '\n') for i in range(len(predictions))]
+	output.close()
 
 if __name__ == '__main__':
 	main()
