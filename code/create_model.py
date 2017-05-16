@@ -3,6 +3,34 @@ from sklearn.linear_model import LogisticRegression
 from sklearn import ensemble
 
 
+def sort_predictions_per_srch_id(df):
+	#sorts the predictions for each srch_id
+	# return df.groupby('srch_id').apply()
+	return df.sort(['prediction'], axis=0, ascending=False)
+
+def make_predictions(train_X, train_y, test_X):
+	###########calculate parameters
+#########
+	clf = ensemble.GradientBoostingClassifier(learning_rate=0.15, max_depth=4, n_estimators=200)
+	
+	#train on click and make predictions
+	clf.fit(train_X, train_y['click_bool'])
+	predictions_click = clf.predict(test_X)
+	probabilities_click = clf.predict_proba(test_X)
+	
+	#train on book and make predictions
+	clf.fit(train_X, train_y['booking_bool'])
+	predictions_book = clf.predict(test_X)
+	probabilities_book = clf.predict_proba(test_X)
+
+	#combine predictions
+	predictions = pd.DataFrame({'pred_click': predictions_click, 'pred_book': predictions_book})
+	predictions['predicted_class'] = 0
+	predictions.ix[predictions.pred_click == 1, 'predicted_class'] = 1
+	predictions.ix[predictions.pred_book == 1, 'predicted_class'] = 2
+ 	# print predictions.head()
+ 	return predictions['predicted_class'].tolist()
+
 def main():
 	data = pd.read_table('../../Data Mining VU data/prepared_data.txt') 
 	X = data
@@ -37,31 +65,14 @@ def main():
 		# "booking_bool"
 	]
 
-	#calculate parameters
-	clf = ensemble.GradientBoostingClassifier(learning_rate=0.15, max_depth=4, n_estimators=200)
 	
-	clf.fit(train_X[features], train_y['click_bool'])
-	predictions_click = clf.predict(test_X[features])
-	probabilities_click = clf.predict_proba(test_X[features])
+	predictions = make_predictions(train_X[features], train_y, test_X[features])
+	final_predictions = pd.DataFrame({'srch_id': test_X['srch_id'], 'prop_id': test_X['prop_id'], 'score': test_X['score'], 'prediction': predictions})
+	final_predictions = final_predictions[['srch_id', 'prop_id', 'score', 'prediction']]
 	
-	clf.fit(train_X[features], train_y['booking_bool'])
-	predictions_book = clf.predict(test_X[features])
-	probabilities_book = clf.predict_proba(test_X[features])
+	sorted_predictions = final_predictions.groupby('srch_id').apply(sort_predictions_per_srch_id)
+	sorted_predictions.to_csv('../../Data Mining VU data/predictions.txt', sep='\t', index=False)
 
-	output = open('../../Data Mining VU data/predictions.txt', 'w')
-	output.write('srch_id\tprop_id\tprob_click\tprob_book\tpred_click\tpred_book\tscore\n')
-	
-	srch_id = test_X['srch_id'].tolist()
-	prop_id = test_X['prop_id'].tolist()
-	click_bool = test_y[ 'click_bool'].tolist()
-	booking_bool = test_y['booking_bool'].tolist()
-	score = test_X['score'].tolist()
-
-	for i in range(len(predictions_click)):
-		output.write('{}\t{}\t{}\t{}\t{}\t{}\t{}'.format(str(srch_id[i]), str(prop_id[i]), str(probabilities_click[i][1]), str(probabilities_book[i][1]), str(predictions_click[i]), str(predictions_book[i]), str(score[i])) + '\n')
-
-	# [output.write( str(probabilities_click[i][1]) + '\t' + str(probabilities_book[i][1]) + '\t' + str(test_y['click_bool'][i]) + str(test_y['booking_bool'][i]) + '\n') for i in range(len(predictions_click))]
-	output.close()
 
 if __name__ == '__main__':
 	main()
